@@ -1,0 +1,55 @@
+name: hacktracker_frontend
+description: "HackTracker — slowpitch softball stats app"
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.9.2 <5.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  http: ^1.5.0
+  provider: ^6.1.5
+  json_annotation: ^4.8.1
+  intl: ^0.20.2
+  shared_preferences: ^2.3.2
+  path_provider: ^2.1.5
+  flutter_localizations:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+  build_runner: ^2.4.7
+  json_serializable: ^6.7.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/icons/
+
+  fonts:
+    - family: Tektur
+      fonts:
+        - asset: fonts/Tektur-Regular.ttf
+        - asset: fonts/Tektur-Medium.ttf
+          weight: 500
+        - asset: fonts/Tektur-SemiBold.ttf
+          weight: 600
+        - asset: fonts/Tektur-Bold.ttf
+          weight: 700
+        - asset: fonts/Tektur-ExtraBold.ttf
+          weight: 800
+        - asset: fonts/Tektur-Black.ttf
+          weight: 900
+
