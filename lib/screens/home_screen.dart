@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -64,6 +66,14 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.person),
             onPressed: () {
               // TODO: Navigate to profile
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              await authProvider.signOut();
+              // AuthWrapper will automatically show login screen
             },
           ),
         ],
