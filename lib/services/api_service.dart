@@ -140,6 +140,8 @@ class ApiService {
             'id': team['PK']?.toString().replaceFirst('TEAM#', '') ?? '',
             'name': team['team_name'] ?? 'Unknown Team',
             'emoji': team['emoji'] ?? '⚾',
+            'icon_code': team['icon_code'] ?? 'sports_baseball',
+            'color_code': team['color_code'] ?? 'neon_green',
             'created_at': team['created_at'],
             'owner_id': team['owner_id'],
           };
@@ -162,15 +164,19 @@ class ApiService {
     required String teamName,
     required String ownerId,
     required String accessToken,
+    String? iconCode,
+    String? colorCode,
   }) async {
     try {
-      print('🌐 API: Creating team "$teamName" for owner: $ownerId');
+      print('🌐 API: Creating team "$teamName" for owner: $ownerId, icon: $iconCode, color: $colorCode');
       print('🌐 API: URL: $baseUrl/teams');
       print('🌐 API: Token: ${accessToken.substring(0, 20)}...');
       
       final requestBody = {
         'team_name': teamName,  // Backend expects 'team_name', not 'name'
         'owner_id': ownerId,    // Backend expects 'owner_id'
+        if (iconCode != null) 'icon_code': iconCode,  // Optional icon
+        if (colorCode != null) 'color_code': colorCode,  // Optional color
       };
       print('🌐 API: Request body: $requestBody');
       
@@ -195,6 +201,8 @@ class ApiService {
             'id': team['PK']?.toString().replaceFirst('TEAM#', '') ?? '',
             'name': team['team_name'] ?? 'Unknown Team',
             'emoji': team['emoji'] ?? '⚾',
+            'icon_code': team['icon_code'] ?? 'sports_baseball',
+            'color_code': team['color_code'] ?? 'neon_green',
             'created_at': team['created_at'],
             'owner_id': team['owner_id'],
           };
@@ -224,6 +232,8 @@ class ApiService {
           'id': team['PK']?.toString().replaceFirst('TEAM#', '') ?? teamId,
           'name': team['team_name'] ?? 'Unknown Team',
           'emoji': team['emoji'] ?? '⚾',
+          'icon_code': team['icon_code'] ?? 'sports_baseball',
+          'color_code': team['color_code'] ?? 'neon_green',
           'created_at': team['created_at'],
           'owner_id': team['owner_id'],
         };

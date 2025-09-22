@@ -61,8 +61,10 @@ class TeamProvider with ChangeNotifier {
     required String teamName,
     required String ownerId,
     required String accessToken,
+    String? iconCode,
+    String? colorCode,
   }) async {
-    print('🏆 TeamProvider: Starting team creation for: $teamName, owner: $ownerId');
+    print('🏆 TeamProvider: Starting team creation for: $teamName, owner: $ownerId, icon: $iconCode, color: $colorCode');
     _setLoading(true);
     try {
       print('🏆 TeamProvider: Calling ApiService.createTeam...');
@@ -70,6 +72,8 @@ class TeamProvider with ChangeNotifier {
         teamName: teamName,
         ownerId: ownerId,
         accessToken: accessToken,
+        iconCode: iconCode,
+        colorCode: colorCode,
       );
       
       print('🏆 TeamProvider: ApiService returned: $newTeam');

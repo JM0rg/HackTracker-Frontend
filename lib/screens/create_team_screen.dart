@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/team_provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/auth_validators.dart';
+import '../utils/icon_utils.dart';
 
 class CreateTeamScreen extends StatefulWidget {
   const CreateTeamScreen({super.key});
@@ -14,11 +15,244 @@ class CreateTeamScreen extends StatefulWidget {
 class _CreateTeamScreenState extends State<CreateTeamScreen> {
   final _formKey = GlobalKey<FormState>();
   final _teamNameController = TextEditingController();
+  
+  // Get available team icons from utility
+  late final List<Map<String, dynamic>> _teamIcons = IconUtils.getAllTeamIcons();
+  String _selectedIconCode = 'sports_baseball'; // Default to baseball
+  
+  // Available team colors
+  final List<Map<String, dynamic>> _teamColors = [
+    {'color': const Color(0xFF00FF88), 'name': 'Neon Green', 'code': 'neon_green'},
+    {'color': const Color(0xFF0088FF), 'name': 'Neon Blue', 'code': 'neon_blue'},
+    {'color': const Color(0xFFFF0088), 'name': 'Neon Pink', 'code': 'neon_pink'},
+    {'color': const Color(0xFFFF8800), 'name': 'Neon Orange', 'code': 'neon_orange'},
+    {'color': const Color(0xFF8800FF), 'name': 'Neon Purple', 'code': 'neon_purple'},
+    {'color': const Color(0xFFFFFF00), 'name': 'Neon Yellow', 'code': 'neon_yellow'},
+    {'color': const Color(0xFF00FFFF), 'name': 'Neon Cyan', 'code': 'neon_cyan'},
+    {'color': const Color(0xFFFF4444), 'name': 'Neon Red', 'code': 'neon_red'},
+    {'color': const Color(0xFFFFFFFF), 'name': 'White', 'code': 'white'},
+    {'color': const Color(0xFF888888), 'name': 'Gray', 'code': 'gray'},
+  ];
+  
+  String _selectedColorCode = 'neon_green'; // Default to neon green
 
   @override
   void dispose() {
     _teamNameController.dispose();
     super.dispose();
+  }
+
+  Color _getSelectedColor() {
+    return _teamColors.firstWhere(
+      (color) => color['code'] == _selectedColorCode,
+      orElse: () => _teamColors.first,
+    )['color'];
+  }
+
+  String _getSelectedColorName() {
+    return _teamColors.firstWhere(
+      (color) => color['code'] == _selectedColorCode,
+      orElse: () => _teamColors.first,
+    )['name'];
+  }
+
+  Widget _buildTeamIcon(String iconCode, Color color, double size) {
+    return Icon(
+      IconUtils.getIconFromCode(iconCode),
+      color: color,
+      size: size,
+    );
+  }
+
+  void _showIconPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+          padding: const EdgeInsets.all(20),
+          height: 650,
+          child: Column(
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Customize Team Logo',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Tektur',
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, color: Color(0xFF888888)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              
+              // Preview
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A2A),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF444444)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildTeamIcon(_selectedIconCode, _getSelectedColor(), 32),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${IconUtils.getIconName(_selectedIconCode)} • ${_getSelectedColorName()}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              
+              // Color Selection (Compact)
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Colors',
+                  style: TextStyle(
+                    color: Color(0xFF888888),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 32,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _teamColors.length,
+                  itemBuilder: (context, index) {
+                    final colorData = _teamColors[index];
+                    final isSelected = _selectedColorCode == colorData['code'];
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        setModalState(() {
+                          _selectedColorCode = colorData['code'];
+                        });
+                        setState(() {}); // Update parent widget too
+                      },
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: colorData['color'],
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isSelected ? Colors.white : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: isSelected 
+                          ? const Icon(Icons.check, color: Colors.black, size: 16)
+                          : null,
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Icons Section
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Icons',
+                  style: TextStyle(
+                    color: Color(0xFF888888),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              // Icon Grid
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 6,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 1,
+                  ),
+                  itemCount: _teamIcons.length,
+                  itemBuilder: (context, index) {
+                    final iconData = _teamIcons[index];
+                    final isSelected = _selectedIconCode == iconData['code'];
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        setModalState(() {
+                          _selectedIconCode = iconData['code'];
+                        });
+                        setState(() {}); // Update parent widget too
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected ? _getSelectedColor().withOpacity(0.2) : const Color(0xFF2A2A2A),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected ? _getSelectedColor() : const Color(0xFF444444),
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              iconData['icon'],
+                              size: 20,
+                              color: isSelected ? _getSelectedColor() : const Color(0xFF888888),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              iconData['name'],
+                              style: TextStyle(
+                                color: isSelected ? _getSelectedColor() : const Color(0xFF666666),
+                                fontSize: 7,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _handleCreateTeam() async {
@@ -62,6 +296,8 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
       teamName: _teamNameController.text.trim(),
       ownerId: userId!,
       accessToken: accessToken,
+      iconCode: _selectedIconCode,
+      colorCode: _selectedColorCode,
     );
 
     print('🎯 CreateTeamScreen: Team creation result: $success');
@@ -105,7 +341,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
       body: SafeArea(
         child: Consumer<TeamProvider>(
           builder: (context, teamProvider, child) {
-            return Padding(
+            return SingleChildScrollView(
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -135,30 +371,66 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
                     key: _formKey,
                     child: Column(
                       children: [
-                        // Team Name Field
-                        TextFormField(
-                          controller: _teamNameController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: 'Team Name',
-                            labelStyle: const TextStyle(color: Color(0xFF888888)),
-                            prefixIcon: const Icon(Icons.sports_baseball, color: Color(0xFF888888)),
-                            filled: true,
-                            fillColor: const Color(0xFF1E1E1E),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF333333)),
+                        // Team Name and Icon Row
+                        Row(
+                          children: [
+                            // Icon Selector Button
+                            GestureDetector(
+                              onTap: _showIconPicker,
+                              child: Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1E1E1E),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFF333333)),
+                                ),
+                                child: _buildTeamIcon(_selectedIconCode, _getSelectedColor(), 28),
+                              ),
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF333333)),
+                            const SizedBox(width: 16),
+                            // Team Name Field
+                            Expanded(
+                              child: TextFormField(
+                                controller: _teamNameController,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  labelText: 'Team Name',
+                                  labelStyle: const TextStyle(color: Color(0xFF888888)),
+                                  filled: true,
+                                  fillColor: const Color(0xFF1E1E1E),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF333333)),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF333333)),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: Color(0xFF00FF88)),
+                                  ),
+                                ),
+                                validator: (value) => AuthValidators.validateRequiredText(value, 'team name'),
+                              ),
                             ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF00FF88)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Icon hint text
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 76), // Align with text field
+                            child: Text(
+                              'Tap icon to customize • ${IconUtils.getIconName(_selectedIconCode)} • ${_getSelectedColorName()}',
+                              style: const TextStyle(
+                                color: Color(0xFF666666),
+                                fontSize: 12,
+                              ),
                             ),
                           ),
-                          validator: (value) => AuthValidators.validateRequiredText(value, 'team name'),
                         ),
                         const SizedBox(height: 32),
 
@@ -221,7 +493,7 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
                     ),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 40),
 
                   // Info Card
                   Container(

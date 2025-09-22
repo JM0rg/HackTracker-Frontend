@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/team_provider.dart';
+import '../utils/icon_utils.dart';
 import 'create_team_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -38,6 +39,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _refreshData() async {
     await _loadUserData();
+  }
+
+  Widget _buildTeamIcon(String iconCode, Color color, double size) {
+    return Icon(
+      IconUtils.getIconFromCode(iconCode),
+      color: color,
+      size: size,
+    );
   }
 
   @override
@@ -126,7 +135,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 value: team['id'],
                 child: Row(
                   children: [
-                    Text(team['emoji'] ?? '⚾'),
+                    _buildTeamIcon(
+                      team['icon_code'] ?? 'sports_baseball',
+                      IconUtils.getColorFromCode(team['color_code'] ?? 'neon_green'),
+                      20,
+                    ),
                     const SizedBox(width: 8),
                     Text(team['name'] ?? 'Unknown Team'),
                   ],
