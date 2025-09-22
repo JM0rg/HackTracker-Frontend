@@ -1,22 +1,23 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../utils/api_exception.dart';
 
 /// Helper class for API operations with reduced redundancy
 class ApiHelper {
   static const String baseUrl = 'https://1bp6rtodo2.execute-api.us-east-1.amazonaws.com/hacktracker-test';
   
   /// Common headers for authenticated requests
-  static Map<String, String> getHeaders(String accessToken) {
+  static Map<String, String> getHeaders(String authorizationHeader) {
     return {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer $accessToken',
+      'Authorization': authorizationHeader,
     };
   }
 
   /// Standard GET request helper
   static Future<T?> get<T>({
     required String endpoint,
-    required String accessToken,
+    required String authorizationHeader,
     Map<String, String>? queryParams,
     T Function(Map<String, dynamic>)? parser,
   }) async {
@@ -29,112 +30,149 @@ class ApiHelper {
 
       final response = await http.get(
         Uri.parse(url),
-        headers: getHeaders(accessToken),
+        headers: getHeaders(authorizationHeader),
       );
 
-      final data = _handleResponse(response);
+      final data = _handleResponse<Map<String, dynamic>>(response, endpoint);
       if (data != null && parser != null) {
         return parser(data);
       }
       return data as T?;
     } catch (e) {
-      print('API GET Error [$endpoint]: $e');
-      return null;
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException.fromError(
+        endpoint: endpoint,
+        error: 'GET request failed: $e',
+      );
     }
   }
 
   /// Standard POST request helper
   static Future<T?> post<T>({
     required String endpoint,
-    required String accessToken,
+    required String authorizationHeader,
     required Map<String, dynamic> body,
     T Function(Map<String, dynamic>)? parser,
   }) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl$endpoint'),
-        headers: getHeaders(accessToken),
+        headers: getHeaders(authorizationHeader),
         body: json.encode(body),
       );
 
-      final data = _handleResponse(response);
+      final data = _handleResponse<Map<String, dynamic>>(response, endpoint);
       if (data != null && parser != null) {
         return parser(data);
       }
       return data as T?;
     } catch (e) {
-      print('API POST Error [$endpoint]: $e');
-      return null;
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException.fromError(
+        endpoint: endpoint,
+        error: 'POST request failed: $e',
+      );
     }
   }
 
   /// Standard PUT request helper
   static Future<T?> put<T>({
     required String endpoint,
-    required String accessToken,
+    required String authorizationHeader,
     required Map<String, dynamic> body,
     T Function(Map<String, dynamic>)? parser,
   }) async {
     try {
       final response = await http.put(
         Uri.parse('$baseUrl$endpoint'),
-        headers: getHeaders(accessToken),
+        headers: getHeaders(authorizationHeader),
         body: json.encode(body),
       );
 
-      final data = _handleResponse(response);
+      final data = _handleResponse<Map<String, dynamic>>(response, endpoint);
       if (data != null && parser != null) {
         return parser(data);
       }
       return data as T?;
     } catch (e) {
-      print('API PUT Error [$endpoint]: $e');
-      return null;
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException.fromError(
+        endpoint: endpoint,
+        error: 'PUT request failed: $e',
+      );
     }
   }
 
   /// Standard DELETE request helper
   static Future<bool> delete({
     required String endpoint,
-    required String accessToken,
+    required String authorizationHeader,
   }) async {
     try {
       final response = await http.delete(
         Uri.parse('$baseUrl$endpoint'),
-        headers: getHeaders(accessToken),
+        headers: getHeaders(authorizationHeader),
       );
 
-      return _handleResponse(response) != null;
+      _handleResponse<Map<String, dynamic>>(response, endpoint);
+      return true; // If no exception thrown, operation succeeded
     } catch (e) {
-      print('API DELETE Error [$endpoint]: $e');
-      return false;
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException.fromError(
+        endpoint: endpoint,
+        error: 'DELETE request failed: $e',
+      );
     }
   }
 
   /// Handle API response and extract data
-  static Map<String, dynamic>? _handleResponse(http.Response response) {
+  static T? _handleResponse<T>(http.Response response, String endpoint) {
     try {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = json.decode(response.body);
         
+        // Normalize response handling - always return the actual data
         // Backend returns data directly, not wrapped in {"success": true, "data": {...}}
-        // So we'll wrap it ourselves for consistency
-        return {
-          'success': true,
-          'data': data,
-        };
+        return data as T?;
       } else {
-        final errorData = json.decode(response.body);
-        print('API Error ${response.statusCode}: ${errorData['error'] ?? errorData}');
+        // Parse error response and throw structured exception
+        Map<String, dynamic>? errorData;
+        try {
+          errorData = json.decode(response.body);
+        } catch (_) {
+          // If we can't parse the error response, use the raw body
+        }
+        
+        throw ApiException.fromResponse(
+          statusCode: response.statusCode,
+          endpoint: endpoint,
+          responseBody: response.body,
+          responseData: errorData,
+        );
       }
-      return null;
     } catch (e) {
-      print('Error parsing response: $e');
-      return null;
+      if (e is ApiException) {
+        rethrow;
+      }
+      // Parsing error
+      throw ApiException.fromError(
+        endpoint: endpoint,
+        error: 'Failed to parse response: $e',
+      );
     }
   }
 
-  /// Extract data from response wrapper
+  /// Extract data from response wrapper (legacy support)
+  /// Note: This method is deprecated as responses are now normalized directly
+  @Deprecated('Responses are now normalized directly in _handleResponse')
   static T? extractData<T>(Map<String, dynamic>? response) {
     if (response != null && response['success'] == true) {
       return response['data'] as T?;
@@ -161,30 +199,28 @@ class ApiHelper {
   }
 
   /// Extract teams from various response formats
-  static List<Map<String, dynamic>> extractTeams(Map<String, dynamic>? result) {
-    if (result == null || result['data'] == null) return [];
+  static List<Map<String, dynamic>> extractTeams(dynamic result) {
+    if (result == null) return [];
     
-    final data = result['data'];
     List<Map<String, dynamic>> teams = [];
     
-    if (data is Map<String, dynamic> && data.containsKey('teams')) {
-      teams = List<Map<String, dynamic>>.from(data['teams'] ?? []);
-    } else if (data is List) {
-      teams = List<Map<String, dynamic>>.from(data);
+    if (result is Map<String, dynamic> && result.containsKey('teams')) {
+      teams = List<Map<String, dynamic>>.from(result['teams'] ?? []);
+    } else if (result is List) {
+      teams = List<Map<String, dynamic>>.from(result);
     }
     
     return transformTeams(teams);
   }
 
   /// Extract games from various response formats  
-  static List<Map<String, dynamic>> extractGames(Map<String, dynamic>? result) {
-    if (result == null || result['data'] == null) return [];
+  static List<Map<String, dynamic>> extractGames(dynamic result) {
+    if (result == null) return [];
     
-    final data = result['data'];
-    if (data is Map<String, dynamic> && data.containsKey('games')) {
-      return List<Map<String, dynamic>>.from(data['games'] ?? []);
-    } else if (data is List) {
-      return List<Map<String, dynamic>>.from(data);
+    if (result is Map<String, dynamic> && result.containsKey('games')) {
+      return List<Map<String, dynamic>>.from(result['games'] ?? []);
+    } else if (result is List) {
+      return List<Map<String, dynamic>>.from(result);
     }
     
     return [];

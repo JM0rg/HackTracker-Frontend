@@ -25,6 +25,9 @@ dependencies:
   # AWS Amplify for Cognito authentication
   amplify_flutter: ^2.6.5
   amplify_auth_cognito: ^2.6.5
+  
+  # Secure storage for tokens
+  flutter_secure_storage: ^9.2.2
 
 dev_dependencies:
   flutter_test:

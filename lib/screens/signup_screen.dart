@@ -44,9 +44,12 @@ class _SignupScreenState extends State<SignupScreen> {
     );
 
     if (success && mounted) {
-      // In test environment, users are auto-confirmed, so go directly to dashboard
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const MainScreen()),
+      // Route back to login for a clean signin
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Account created. Please sign in.'),
+        ),
       );
     }
   }

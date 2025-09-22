@@ -1,4 +1,5 @@
 import 'api_helper.dart';
+import '../providers/auth_provider.dart';
 
 /// Comprehensive API service covering all HackTracker backend endpoints
 class ApiService {
@@ -8,10 +9,13 @@ class ApiService {
   // ============================
 
   /// GET /users/{id} - Get user by ID
-  static Future<Map<String, dynamic>?> getUser(String userId, String accessToken) async {
+  static Future<Map<String, dynamic>?> getUser(String userId, AuthProvider authProvider) async {
+    final authHeader = await authProvider.getAuthorizationHeader();
+    if (authHeader == null) return null;
+    
     final result = await ApiHelper.get<Map<String, dynamic>>(
       endpoint: '/users/$userId',
-      accessToken: accessToken,
+      authorizationHeader: authHeader,
     );
     return ApiHelper.extractData(result);
   }
@@ -332,6 +336,113 @@ class ApiService {
       endpoint: '/teams/$teamId/games/$gameId/lineup',
       accessToken: accessToken,
       body: {'lineup': lineup},
+    );
+    return result != null;
+  }
+
+  // ============================
+  // INVITES & BATCH ROSTER ENDPOINTS
+  // ============================
+
+  /// POST /teams/{id}/players/batch - Batch add ghost players
+  static Future<bool> addPlayersBatch({
+    required String teamId,
+    required List<Map<String, dynamic>> players, // [{display_name, role?}]
+    required String accessToken,
+  }) async {
+    final result = await ApiHelper.post(
+      endpoint: '/teams/$teamId/players/batch',
+      accessToken: accessToken,
+      body: { 'players': players },
+    );
+    return result != null;
+  }
+
+  /// POST /teams/{id}/invites - Create an invite for a ghost player
+  static Future<Map<String, dynamic>?> createInvite({
+    required String teamId,
+    required String playerId,
+    required String email,
+    required String accessToken,
+  }) async {
+    final result = await ApiHelper.post<Map<String, dynamic>>(
+      endpoint: '/teams/$teamId/invites',
+      accessToken: accessToken,
+      body: { 'player_id': playerId, 'email': email },
+    );
+    return ApiHelper.extractData(result);
+  }
+
+  /// GET /teams/{id}/invites - List outgoing invites for a team
+  static Future<List<Map<String, dynamic>>> getTeamInvites({
+    required String teamId,
+    required String accessToken,
+  }) async {
+    final result = await ApiHelper.get<Map<String, dynamic>>(
+      endpoint: '/teams/$teamId/invites',
+      accessToken: accessToken,
+    );
+    final data = ApiHelper.extractData<Map<String, dynamic>>(result);
+    if (data == null) return [];
+    final invites = data['invites'];
+    if (invites is List) {
+      return List<Map<String, dynamic>>.from(invites);
+    }
+    return [];
+  }
+
+  /// GET /invites - List incoming invites for current user
+  static Future<List<Map<String, dynamic>>> getIncomingInvites({
+    required String accessToken,
+  }) async {
+    final result = await ApiHelper.get<Map<String, dynamic>>(
+      endpoint: '/invites',
+      accessToken: accessToken,
+    );
+    final data = ApiHelper.extractData<Map<String, dynamic>>(result);
+    if (data == null) return [];
+    final invites = data['invites'];
+    if (invites is List) {
+      return List<Map<String, dynamic>>.from(invites);
+    }
+    return [];
+  }
+
+  /// POST /invites/{token}/accept - Accept invite
+  static Future<bool> acceptInvite({
+    required String token,
+    required String accessToken,
+  }) async {
+    final result = await ApiHelper.post(
+      endpoint: '/invites/$token/accept',
+      accessToken: accessToken,
+      body: {},
+    );
+    return result != null;
+  }
+
+  /// POST /invites/{token}/decline - Decline invite
+  static Future<bool> declineInvite({
+    required String token,
+    required String accessToken,
+  }) async {
+    final result = await ApiHelper.post(
+      endpoint: '/invites/$token/decline',
+      accessToken: accessToken,
+      body: {},
+    );
+    return result != null;
+  }
+
+  /// POST /invites/{token}/revoke - Revoke outgoing invite
+  static Future<bool> revokeInvite({
+    required String token,
+    required String accessToken,
+  }) async {
+    final result = await ApiHelper.post(
+      endpoint: '/invites/$token/revoke',
+      accessToken: accessToken,
+      body: {},
     );
     return result != null;
   }

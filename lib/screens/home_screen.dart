@@ -34,11 +34,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final teamProvider = Provider.of<TeamProvider>(context, listen: false);
     
-    final accessToken = authProvider.accessToken;
     final userId = authProvider.userId;
     
-    if (accessToken != null && userId != null) {
-      await teamProvider.loadUserTeams(userId, accessToken);
+    if (userId != null) {
+      await teamProvider.loadUserTeams(userId, authProvider);
     }
   }
 
@@ -51,6 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: const Text('Dashboard'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
@@ -65,8 +65,10 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () async {
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
               final teamProvider = Provider.of<TeamProvider>(context, listen: false);
+              print('🔐 HomeScreen: Sign out tapped - clearing team state and calling AuthProvider.signOut');
               teamProvider.clear(); // Clear team data on logout
               await authProvider.signOut();
+              print('🔐 HomeScreen: Sign out flow completed');
             },
           ),
         ],
@@ -75,6 +77,30 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _refreshData,
         child: Consumer2<TeamProvider, AuthProvider>(
           builder: (context, teamProvider, authProvider, child) {
+          // Show profile validation state
+          if (authProvider.isProfileValidating) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Setting up your account...',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please wait while we verify your profile.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          
           if (teamProvider.isLoading) {
             return UIHelpers.buildLoadingIndicator();
           }
@@ -142,10 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onChanged: (String? teamId) async {
               if (teamId != null) {
                 final authProvider = Provider.of<AuthProvider>(context, listen: false);
-                final accessToken = authProvider.accessToken;
-                if (accessToken != null) {
-                  await teamProvider.selectTeam(teamId, accessToken);
-                }
+                await teamProvider.selectTeam(teamId, authProvider);
               }
             },
           ),

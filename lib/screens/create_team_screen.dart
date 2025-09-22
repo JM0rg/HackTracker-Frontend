@@ -276,21 +276,27 @@ class _CreateTeamScreenState extends State<CreateTeamScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final teamProvider = Provider.of<TeamProvider>(context, listen: false);
     
-    final accessToken = authProvider.accessToken;
-    final userId = authProvider.userId;
+    var accessToken = authProvider.accessToken;
+    var userId = authProvider.userId;
     
     print('🎯 CreateTeamScreen: AccessToken available: ${accessToken != null}');
     print('🎯 CreateTeamScreen: UserId: $userId');
     
     if (accessToken == null || userId == null) {
-      print('🎯 CreateTeamScreen: Missing authentication data');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Authentication required'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+      print('🎯 CreateTeamScreen: Missing authentication data - refreshing session');
+      await Provider.of<AuthProvider>(context, listen: false).refreshSession();
+      accessToken = authProvider.accessToken;
+      userId = authProvider.userId;
+      print('🎯 CreateTeamScreen: After refresh - AccessToken available: ${accessToken != null}, UserId: $userId');
+      if (accessToken == null || userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Authentication required'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
     }
 
     print('🎯 CreateTeamScreen: Calling teamProvider.createTeam...');

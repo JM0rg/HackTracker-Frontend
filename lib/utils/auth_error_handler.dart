@@ -1,59 +1,45 @@
+import 'api_exception.dart';
+import 'base_error_handler.dart';
+
 /// Authentication error handling utilities
 /// Contains logic for converting technical error messages to user-friendly ones
-class AuthErrorHandler {
+class AuthErrorHandler extends BaseErrorHandler {
+  // Authentication-specific error patterns
+  static const Map<String, String> _authErrorPatterns = {
+    // Authentication errors
+    'Incorrect username or password': 'Invalid email or password. Please try again.',
+    'User does not exist': 'No account found with this email address.',
+    'User is not confirmed': 'Please verify your email before signing in.',
+    'Password attempts exceeded': 'Too many failed login attempts. Please try again later.',
+    'UsernameExistsException': 'An account with this email address already exists.',
+    'InvalidPasswordException': 'Password must be 8+ characters with uppercase, lowercase, number & symbol.',
+    'UserNotFoundException': 'No account found with this email address.',
+    'NotAuthorizedException': 'Invalid email or password. Please try again.',
+    'UserNotConfirmedException': 'Please verify your email before signing in.',
+    
+    // Verification errors
+    'CodeMismatchException': 'Invalid verification code. Please check the code and try again.',
+    'ExpiredCodeException': 'Verification code has expired. Please request a new code.',
+    
+    // Rate limiting errors
+    'LimitExceededException': 'Too many requests. Please wait and try again.',
+    'TooManyRequestsException': 'Too many requests. Please wait and try again.',
+    
+    // Service errors
+    'InvalidParameterException': 'Invalid input. Please check your information and try again.',
+    'ResourceNotFoundException': 'Service temporarily unavailable. Please try again later.',
+    'InternalErrorException': 'Service error occurred. Please try again later.',
+    'ServiceUnavailableException': 'Service temporarily unavailable. Please try again later.',
+  };
+
   /// Convert technical error messages to user-friendly ones
-  static String getFriendlyErrorMessage(String error) {
-    if (error.contains('Incorrect username or password')) {
-      return 'Invalid email or password. Please try again.';
-    } else if (error.contains('User does not exist')) {
-      return 'No account found with this email address.';
-    } else if (error.contains('User is not confirmed')) {
-      return 'Please verify your email before signing in.';
-    } else if (error.contains('Password attempts exceeded')) {
-      return 'Too many failed login attempts. Please try again later.';
-    } else if (error.contains('Network error') || error.contains('NetworkException')) {
-      return 'Network error. Please check your connection and try again.';
-    } else if (error.contains('UsernameExistsException')) {
-      return 'An account with this email address already exists.';
-    } else if (error.contains('InvalidPasswordException')) {
-      return 'Password must be 8+ characters with uppercase, lowercase, number & symbol.';
-    } else if (error.contains('CodeMismatchException')) {
-      return 'Invalid verification code. Please check the code and try again.';
-    } else if (error.contains('ExpiredCodeException')) {
-      return 'Verification code has expired. Please request a new code.';
-    } else if (error.contains('LimitExceededException')) {
-      return 'Too many requests. Please wait and try again.';
-    } else if (error.contains('UserNotFoundException')) {
-      return 'No account found with this email address.';
-    } else if (error.contains('NotAuthorizedException')) {
-      return 'Invalid email or password. Please try again.';
-    } else if (error.contains('UserNotConfirmedException')) {
-      return 'Please verify your email before signing in.';
-    } else if (error.contains('TooManyRequestsException')) {
-      return 'Too many requests. Please wait and try again.';
-    } else if (error.contains('InvalidParameterException')) {
-      return 'Invalid input. Please check your information and try again.';
-    } else if (error.contains('ResourceNotFoundException')) {
-      return 'Service temporarily unavailable. Please try again later.';
-    } else if (error.contains('InternalErrorException')) {
-      return 'Service error occurred. Please try again later.';
-    } else if (error.contains('ServiceUnavailableException')) {
-      return 'Service temporarily unavailable. Please try again later.';
-    } else if (error.contains('TimeoutException') || error.contains('timeout')) {
-      return 'Request timed out. Please check your connection and try again.';
-    } else {
-      // For any other errors, show a generic message
-      return 'Something went wrong. Please try again.';
-    }
+  static String getFriendlyErrorMessage(dynamic error) {
+    return BaseErrorHandler.getFriendlyErrorMessage(error, _authErrorPatterns);
   }
 
   /// Check if error indicates a network connectivity issue
-  static bool isNetworkError(String error) {
-    return error.contains('Network') || 
-           error.contains('Connection') || 
-           error.contains('timeout') ||
-           error.contains('TimeoutException') ||
-           error.contains('NetworkException');
+  static bool isNetworkError(dynamic error) {
+    return BaseErrorHandler.isNetworkError(error);
   }
 
   /// Check if error indicates user input validation issue

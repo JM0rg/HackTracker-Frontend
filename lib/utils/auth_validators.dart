@@ -2,8 +2,8 @@
 /// Contains all validation logic for authentication forms
 class AuthValidators {
   // Regular expressions
-  static final RegExp _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-  static final RegExp _passwordRegex = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]).*$');
+  static final RegExp _emailRegex = RegExp(r"^[^\s@]+@[^\s@]+\.[^\s@]+$");
+  static final RegExp _passwordRegex = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).*$');
 
   // Validation constants
   static const int minPasswordLength = 8;
@@ -89,7 +89,7 @@ class AuthValidators {
     if (RegExp(r'[a-z]').hasMatch(password)) strength += 15; // lowercase
     if (RegExp(r'[A-Z]').hasMatch(password)) strength += 15; // uppercase
     if (RegExp(r'\d').hasMatch(password)) strength += 15;    // numbers
-    if (RegExp(r'[!@#$%^&*()_+\-=\[\]{};:"\\|,.<>\/?]').hasMatch(password)) strength += 15; // symbols
+    if (RegExp(r'[^A-Za-z0-9]').hasMatch(password)) strength += 15; // symbols (any non-alphanumeric)
     
     return strength.clamp(0, 100);
   }

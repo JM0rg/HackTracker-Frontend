@@ -47,9 +47,10 @@ class AuthService {
     }
   }
 
-  /// Get current user's JWT tokens
+  /// Get current user's JWT tokens with automatic refresh
   Future<Map<String, String>?> getTokens() async {
     try {
+      // fetchAuthSession() automatically refreshes tokens if needed
       final session = await Amplify.Auth.fetchAuthSession();
       if (session is CognitoAuthSession) {
         return {
@@ -60,6 +61,27 @@ class AuthService {
       return null;
     } catch (e) {
       safePrint('Error getting tokens: $e');
+      return null;
+    }
+  }
+
+  /// Explicitly refresh the auth session
+  Future<Map<String, String>?> refreshTokens() async {
+    try {
+      safePrint('🔄 Auth: Explicitly refreshing tokens...');
+      final session = await Amplify.Auth.fetchAuthSession();
+      if (session is CognitoAuthSession) {
+        final tokens = {
+          'accessToken': session.userPoolTokensResult.value.accessToken.raw,
+          'idToken': session.userPoolTokensResult.value.idToken.raw,
+        };
+        safePrint('✅ Auth: Tokens refreshed successfully');
+        return tokens;
+      }
+      safePrint('❌ Auth: Failed to refresh tokens - invalid session type');
+      return null;
+    } catch (e) {
+      safePrint('❌ Auth: Error refreshing tokens: $e');
       return null;
     }
   }

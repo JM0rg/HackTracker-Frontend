@@ -24,7 +24,7 @@ const amplifyconfig = '''{
                         "signupAttributes": ["email", "given_name", "family_name"],
                         "passwordProtectionSettings": {
                             "passwordPolicyMinLength": 8,
-                            "passwordPolicyCharacters": []
+                            "passwordPolicyCharacters": ["REQUIRES_LOWERCASE", "REQUIRES_UPPERCASE", "REQUIRES_NUMERIC", "REQUIRES_SYMBOLS"]
                         },
                         "mfaConfiguration": "OFF",
                         "mfaTypes": ["SMS"],
