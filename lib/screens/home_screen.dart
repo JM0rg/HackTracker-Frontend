@@ -3,6 +3,11 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/team_provider.dart';
 import '../utils/icon_utils.dart';
+import '../utils/ui_helpers.dart';
+import '../utils/theme_constants.dart';
+import '../widgets/team_icon_widget.dart';
+import '../widgets/app_card.dart';
+import '../widgets/stat_item.dart';
 import 'create_team_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -41,13 +46,6 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadUserData();
   }
 
-  Widget _buildTeamIcon(String iconCode, Color color, double size) {
-    return Icon(
-      IconUtils.getIconFromCode(iconCode),
-      color: color,
-      size: size,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -77,13 +75,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _refreshData,
         child: Consumer2<TeamProvider, AuthProvider>(
           builder: (context, teamProvider, authProvider, child) {
-            if (teamProvider.isLoading) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00FF88)),
-                ),
-              );
-            }
+          if (teamProvider.isLoading) {
+            return UIHelpers.buildLoadingIndicator();
+          }
 
             return SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -135,10 +129,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 value: team['id'],
                 child: Row(
                   children: [
-                    _buildTeamIcon(
-                      team['icon_code'] ?? 'sports_baseball',
-                      IconUtils.getColorFromCode(team['color_code'] ?? 'neon_green'),
-                      20,
+                    TeamIconWidget.withDefaults(
+                      iconCode: team['icon_code'],
+                      colorCode: team['color_code'],
                     ),
                     const SizedBox(width: 8),
                     Text(team['name'] ?? 'Unknown Team'),
@@ -162,88 +155,40 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNoTeamsState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF333333)),
-      ),
+    return UIHelpers.buildCard(
+      padding: const EdgeInsets.all(UIHelpers.paddingLarge),
       child: Column(
         children: [
-          const Icon(
+          Icon(
             Icons.sports_baseball,
             size: 64,
-            color: Color(0xFF888888),
+            color: ThemeConstants.textSecondary,
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Welcome to HackTracker!',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-              fontFamily: 'Tektur',
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
+          const SizedBox(height: UIHelpers.paddingMedium),
+          Text('Welcome to HackTracker!', style: ThemeConstants.headerSmall),
+          const SizedBox(height: UIHelpers.paddingSmall),
+          Text(
             'Get started by creating a new team or joining an existing one.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 16,
-              color: Color(0xFF888888),
-            ),
+            style: ThemeConstants.subtitle,
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const CreateTeamScreen(),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF00FF88),
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          const SizedBox(height: UIHelpers.paddingLarge),
+          UIHelpers.buildPrimaryButton(
+            text: 'Create Your First Team',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const CreateTeamScreen(),
                 ),
-              ),
-              child: const Text(
-                'Create Your First Team',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
+              );
+            },
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2A2A2A),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF444444)),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.info_outline, color: Color(0xFF888888), size: 16),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Team invites coming soon! For now, create a team and add players manually.',
-                    style: TextStyle(
-                      color: Color(0xFF888888),
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: UIHelpers.paddingMedium),
+          UIHelpers.buildInfoCard(
+            title: '',
+            content: 'Team invites coming soon! For now, create a team and add players manually.',
+            icon: Icons.info_outline,
+            iconColor: ThemeConstants.textSecondary,
           ),
         ],
       ),
@@ -282,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                '${_formatGameDate(nextGame['start_datetime_utc'])}',
+                UIHelpers.formatGameDateTime(nextGame['start_datetime_utc']),
                 style: const TextStyle(color: Color(0xFF888888)),
               ),
               Text(
@@ -411,53 +356,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildEmptyStatsCard() {
     return Card(
-      color: const Color(0xFF1E1E1E),
+      color: ThemeConstants.surfacePrimary,
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(UIHelpers.paddingMedium),
         child: SizedBox(
           width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            const Text(
-              'Stats',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF00FF88),
+              UIHelpers.buildSectionHeader('Stats'),
+              const SizedBox(height: UIHelpers.paddingMedium),
+              UIHelpers.buildEmptyState(
+                icon: Icons.bar_chart,
+                title: 'No stats available',
+                subtitle: 'Join a team to start tracking your performance',
               ),
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.bar_chart,
-                    size: 48,
-                    color: const Color(0xFF888888).withOpacity(0.5),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'No stats available',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF888888),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Join a team to start tracking your performance',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF666666),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
           ),
         ),
       ),
@@ -470,10 +384,10 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            _buildStatItem('AVG', '.000', Colors.blue),
-            _buildStatItem('H', '0', Colors.green),
-            _buildStatItem('R', '0', Colors.orange),
-            _buildStatItem('RBI', '0', Colors.purple),
+            StatItem(label: 'AVG', value: '.000', color: Colors.blue),
+            StatItem(label: 'H', value: '0', color: Colors.green),
+            StatItem(label: 'R', value: '0', color: Colors.orange),
+            StatItem(label: 'RBI', value: '0', color: Colors.purple),
           ],
         ),
       ],
@@ -485,38 +399,15 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            _buildStatItem('Record', teamProvider.teamRecord, Colors.green),
-            _buildStatItem('RS', '0', Colors.blue),
-            _buildStatItem('RA', '0', Colors.red),
+            StatItem(label: 'Record', value: teamProvider.teamRecord, color: Colors.green),
+            StatItem(label: 'RS', value: '0', color: Colors.blue),
+            StatItem(label: 'RA', value: '0', color: Colors.red),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
-    return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF888888),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildStatsDropdown({
     required String value,
@@ -546,23 +437,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String _formatGameDate(String? dateTimeUtc) {
-    if (dateTimeUtc == null) return 'TBD';
-    
-    try {
-      final dateTime = DateTime.parse(dateTimeUtc);
-      final local = dateTime.toLocal();
-      return '${local.month}/${local.day} at ${_formatTime(local)}';
-    } catch (e) {
-      return 'TBD';
-    }
-  }
-
-  String _formatTime(DateTime dateTime) {
-    final hour = dateTime.hour;
-    final minute = dateTime.minute.toString().padLeft(2, '0');
-    final period = hour >= 12 ? 'PM' : 'AM';
-    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
-    return '$displayHour:$minute $period';
-  }
 }

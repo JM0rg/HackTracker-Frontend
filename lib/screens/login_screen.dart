@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/auth_validators.dart';
+import '../utils/ui_helpers.dart';
+import '../utils/theme_constants.dart';
 import 'signup_screen.dart';
 import '../main.dart';
 
@@ -52,35 +54,23 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: ThemeConstants.bgPrimary,
       body: SafeArea(
         child: Consumer<AuthProvider>(
           builder: (context, authProvider, child) {
             return Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(UIHelpers.paddingLarge),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo/Title
-                  const Text(
-                    'HackTracker',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF00FF88),
-                      fontFamily: 'Tektur',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
+                  Text('HackTracker', style: ThemeConstants.headerLarge),
+                  const SizedBox(height: UIHelpers.paddingSmall),
+                  Text(
                     'Slowpitch Softball Stats',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF888888),
-                      fontFamily: 'Tektur',
-                    ),
+                    style: ThemeConstants.subtitle.copyWith(fontFamily: 'Tektur'),
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: UIHelpers.paddingXLarge * 1.5),
 
                   // Login Form
                   Form(
@@ -88,67 +78,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Column(
                       children: [
                         // Email Field
-                        TextFormField(
+                        UIHelpers.buildTextFormField(
                           controller: _emailController,
+                          labelText: 'Email',
                           keyboardType: TextInputType.emailAddress,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            labelStyle: const TextStyle(color: Color(0xFF888888)),
-                            prefixIcon: const Icon(Icons.email, color: Color(0xFF888888)),
-                            filled: true,
-                            fillColor: const Color(0xFF1E1E1E),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF333333)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF333333)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF00FF88)),
-                            ),
-                          ),
+                          prefixIcon: Icons.email,
                           validator: AuthValidators.validateEmail,
                         ),
                         const SizedBox(height: 16),
 
                         // Password Field
-                        TextFormField(
+                        UIHelpers.buildTextFormField(
                           controller: _passwordController,
+                          labelText: 'Password',
                           obscureText: _obscurePassword,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            labelStyle: const TextStyle(color: Color(0xFF888888)),
-                            prefixIcon: const Icon(Icons.lock, color: Color(0xFF888888)),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                color: const Color(0xFF888888),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFF1E1E1E),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF333333)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF333333)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: const BorderSide(color: Color(0xFF00FF88)),
-                            ),
+                          prefixIcon: Icons.lock,
+                          suffixIcon: UIHelpers.buildPasswordToggle(
+                            _obscurePassword,
+                            () => setState(() => _obscurePassword = !_obscurePassword),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -161,58 +108,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Error Message
                         if (authProvider.error != null)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            margin: const EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2D1B1B),
-                              border: Border.all(color: const Color(0xFFFF6B6B)),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.error, color: Color(0xFFFF6B6B), size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    authProvider.error!,
-                                    style: const TextStyle(color: Color(0xFFFF6B6B)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          UIHelpers.buildErrorMessage(authProvider.error!),
 
                         // Sign In Button
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: authProvider.isLoading ? null : _handleSignIn,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF00FF88),
-                              foregroundColor: Colors.black,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: authProvider.isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                                    ),
-                                  )
-                                : const Text(
-                                    'Sign In',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                          ),
+                        UIHelpers.buildPrimaryButton(
+                          text: 'Sign In',
+                          onPressed: _handleSignIn,
+                          isLoading: authProvider.isLoading,
                         ),
                         const SizedBox(height: 24),
 
