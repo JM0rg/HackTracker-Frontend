@@ -5,46 +5,61 @@ A modern Flutter mobile application for tracking slowpitch softball statistics, 
 ## 🏆 Features
 
 ### Current Implementation
-- **Dark Hacker Theme**: Modern UI with neon green, blue, and pink accents
-- **Team Management**: Multi-team support with dropdown team selection
-- **Dashboard**: Comprehensive home screen with game info and stats
-- **Navigation**: Bottom navigation with Home, Schedule, Stats, and Roster screens
-- **Responsive Design**: No-scroll layout optimized for mobile devices
-- **Custom Typography**: Tektur font family for a modern, tech-forward appearance
+- **🔐 AWS Cognito Authentication**: Secure JWT-based login with retry logic and auto-healing
+- **🎨 Dark Hacker Theme**: Modern UI with neon green, blue, and pink accents
+- **👥 Team Management**: Multi-team support with real-time team creation
+- **📊 Dashboard**: Comprehensive home screen with real team data and stats
+- **🧭 Navigation**: Bottom navigation with Home, Schedule, Stats, and Roster screens
+- **📱 Responsive Design**: No-scroll layout optimized for mobile devices
+- **🎯 Custom Typography**: Tektur font family for a modern, tech-forward appearance
+- **🔄 State Management**: Provider-based architecture with comprehensive error handling
+- **🌐 Backend Integration**: Full API integration with HackTracker backend
 
 ### Planned Features
 - **Game Management**: Schedule games, track lineups, and live scoring
-- **Player Statistics**: Comprehensive batting, fielding, and team stats
+- **Player Statistics**: Advanced batting, fielding, and team analytics
 - **Real-time Updates**: Live game scoring and stat tracking
 - **Team Analytics**: Performance insights and trends
-- **User Authentication**: Secure login and team membership management
+- **Ghost Player Support**: Add players without accounts and link them later
 
 ## 🏗️ Architecture
 
 ### Project Structure
 ```
 lib/
-├── main.dart                 # App entry point and theme configuration
-├── models/                   # Data models (User, Team, Game, etc.)
-├── providers/                # State management with Provider
-├── screens/                  # UI screens
-│   ├── home_screen.dart      # Main dashboard
-│   ├── schedule_screen.dart  # Game schedule
-│   ├── stats_screen.dart     # Team and player statistics
-│   └── roster_screen.dart    # Team roster management
-├── services/                 # API and business logic
-│   └── api_service.dart      # Backend API integration
-└── widgets/                  # Reusable UI components
+├── main.dart                    # App entry point with AuthWrapper
+├── amplifyconfiguration.dart    # AWS Amplify configuration
+├── models/                      # Data models (User, Team, Game, etc.)
+├── providers/                   # State management with Provider
+│   ├── auth_provider.dart       # Authentication state management
+│   └── team_provider.dart       # Team data and operations
+├── screens/                     # UI screens
+│   ├── home_screen.dart         # Main dashboard with real data
+│   ├── login_screen.dart        # Cognito authentication
+│   ├── signup_screen.dart       # User registration
+│   ├── create_team_screen.dart  # Team creation interface
+│   ├── schedule_screen.dart     # Game schedule
+│   ├── stats_screen.dart        # Team and player statistics
+│   └── roster_screen.dart       # Team roster management
+├── services/                    # API and business logic
+│   ├── api_service.dart         # Comprehensive backend integration
+│   └── auth_service.dart        # AWS Amplify authentication
+├── utils/                       # Utility functions
+│   ├── auth_validators.dart     # Input validation and sanitization
+│   └── auth_error_handler.dart  # User-friendly error messages
+└── widgets/                     # Reusable UI components
 ```
 
 ### Tech Stack
 - **Framework**: Flutter 3.35.4+
 - **Language**: Dart 3.9.2+
-- **State Management**: Provider
-- **HTTP Client**: http package
+- **State Management**: Provider pattern with ChangeNotifier
+- **Authentication**: AWS Amplify + Cognito
+- **HTTP Client**: http package with JWT authorization
 - **Local Storage**: SharedPreferences
 - **Code Generation**: json_serializable, build_runner
 - **Linting**: flutter_lints
+- **Backend Integration**: RESTful API with comprehensive error handling
 
 ## 🎨 Design System
 
@@ -153,20 +168,35 @@ Create environment-specific configuration files:
 - `lib/config/staging.dart`
 
 ### API Integration
-The app connects to a Python/FastAPI backend with the following endpoints:
-- **Users**: Authentication and profile management
-- **Teams**: Team creation, membership, and management
-- **Games**: Game scheduling, lineup management, and scoring
+The app connects to a serverless Python backend with JWT authentication:
+- **🔐 Authentication**: AWS Cognito with JWT tokens
+- **👥 User Management**: Profile management with self-only access
+- **🏆 Team Management**: Team creation, unified player model, ghost player support
+- **🎮 Game Management**: Game scheduling, lineup management, and scoring
+- **📊 Statistics**: Real-time stats calculation and historical data
 
-### Backend API Structure
+### Backend API Structure (🔒 JWT Required)
 ```
-POST /users              # Create user
-GET  /users/{id}         # Get user by ID
-GET  /users?email=...    # Get user by email
-POST /teams              # Create team
-GET  /teams/{id}         # Get team details
-POST /games              # Create game
-GET  /games/{id}         # Get game details
+# User Management
+GET  /users/{id}                           # Get user profile (self-only)
+PUT  /users/{id}                           # Update user profile (self-only)
+GET  /users/{id}/teams                     # Get user's teams
+
+# Team Management  
+POST /teams                                # Create team
+GET  /teams/{id}                           # Get team details
+DELETE /teams/{id}                         # Delete team (cascading)
+
+# Player Management (Unified Model)
+GET  /teams/{id}/players                   # List team players
+POST /teams/{id}/players                   # Add ghost player
+POST /teams/{id}/players/{player_id}/link  # Link ghost to user
+PUT  /teams/{id}/transfer-ownership        # Transfer ownership
+
+# Game Management
+POST /teams/{id}/games                     # Create game
+GET  /teams/{id}/games                     # List games (paginated)
+GET  /teams/{id}/games/{game_id}           # Get game details
 ```
 
 ## 🧪 Testing
@@ -229,11 +259,15 @@ This frontend integrates with the HackTracker backend:
 - **Tech Stack**: Python, FastAPI, AWS Lambda, DynamoDB, API Gateway
 - **Deployment**: AWS Serverless Architecture
 
-## 🐛 Known Issues
+## ✅ Recent Fixes
 
-- Stats screen overflow fixed (RenderFlex issue resolved)
-- Dropdown consistency issues resolved
-- iOS Simulator setup required for proper testing
+- **Authentication Flow**: Implemented comprehensive JWT validation with retry logic
+- **Team Name Display**: Fixed dropdown showing correct team names (not "Unknown Team")
+- **Card Width Consistency**: Resolved layout issues between Next Game and Stats cards
+- **API Response Parsing**: Fixed team games and user teams data transformation
+- **Stats Screen Overflow**: Resolved RenderFlex overflow issues
+- **Dropdown Consistency**: Fixed dropdown direction and height consistency
+- **Error Handling**: Implemented user-friendly error messages throughout the app
 
 ## 📞 Support
 
@@ -244,22 +278,29 @@ For support and questions:
 
 ## 🗺️ Roadmap
 
-### Phase 1 (Current)
-- [x] Basic UI/UX implementation
-- [x] Navigation structure
-- [x] Dark theme with neon accents
-- [x] Team and player stats display
+### Phase 1 ✅ (Completed)
+- [x] Basic UI/UX implementation with dark hacker theme
+- [x] Navigation structure with bottom navigation
+- [x] Dark theme with neon accents and custom typography
+- [x] Team and player stats display with dynamic dropdowns
+- [x] **Backend API integration** with comprehensive error handling
+- [x] **AWS Cognito authentication** with JWT validation
+- [x] **Team management** with real-time creation and data display
+- [x] **State management** with Provider pattern
+- [x] **Input validation** and user-friendly error messages
 
-### Phase 2 (Next)
-- [ ] Backend API integration
-- [ ] User authentication
-- [ ] Real-time game scoring
-- [ ] Push notifications
+### Phase 2 🚧 (In Progress)
+- [x] User profile management with self-only access
+- [x] Team creation and membership display
+- [ ] Game scheduling and lineup management
+- [ ] Real-time game scoring interface
+- [ ] Ghost player management and linking
 
-### Phase 3 (Future)
-- [ ] Advanced analytics
-- [ ] Social features
-- [ ] Offline mode
+### Phase 3 🔮 (Future)
+- [ ] Advanced team and player analytics
+- [ ] Push notifications for game updates
+- [ ] Social features and team communication
+- [ ] Offline mode with local data caching
 - [ ] Multi-language support
 
 ---

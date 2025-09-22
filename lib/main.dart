@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/team_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/stats_screen.dart';
@@ -19,6 +20,7 @@ class HackTrackerApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => TeamProvider()),
       ],
       child: MaterialApp(
         title: 'HackTracker',

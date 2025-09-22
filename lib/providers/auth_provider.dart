@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import '../utils/auth_error_handler.dart';
 
 class AuthProvider with ChangeNotifier {
@@ -41,16 +42,49 @@ class AuthProvider with ChangeNotifier {
       if (_isSignedIn) {
         _currentUser = await _authService.getCurrentUser();
         _tokens = await _authService.getTokens();
+        
+        // Validate that user profile exists in DynamoDB
+        if (_currentUser != null && _tokens != null) {
+          bool profileValidated = false;
+          
+          // Try to validate profile with retries (for new users, PostConfirmation might be delayed)
+          for (int attempt = 0; attempt < 3; attempt++) {
+            try {
+              final userProfile = await ApiService.getUser(_currentUser!.userId, _tokens!['accessToken']!);
+              if (userProfile != null) {
+                print('✅ Auth: User profile validated in DynamoDB (attempt ${attempt + 1})');
+                profileValidated = true;
+                break;
+              }
+            } catch (e) {
+              print('⚠️ Auth: Attempt ${attempt + 1} failed to validate profile: $e');
+            }
+            
+            // Wait before retrying (only for attempts 1 and 2)
+            if (attempt < 2) {
+              await Future.delayed(Duration(seconds: attempt + 1));
+            }
+          }
+          
+          if (!profileValidated) {
+            // User profile doesn't exist in DynamoDB after retries, sign out
+            print('🚨 Auth: User profile not found in DynamoDB after retries, signing out');
+            await signOut();
+            return;
+          }
+        }
       } else {
         _currentUser = null;
         _tokens = null;
       }
       _clearError();
     } catch (e) {
+      print('❌ Auth: Error checking auth status: $e');
+      // If there's an error validating the user profile, sign out for safety
+      if (_isSignedIn) {
+        await signOut();
+      }
       _setError('Failed to check auth status: $e');
-      _isSignedIn = false;
-      _currentUser = null;
-      _tokens = null;
     }
   }
 
@@ -100,6 +134,11 @@ class AuthProvider with ChangeNotifier {
       
       if (result.isSignedIn) {
         await _checkAuthStatus();
+        // If _checkAuthStatus signed us out due to missing profile, return false
+        if (!_isSignedIn) {
+          _setError('User profile not found. Please contact support.');
+          return false;
+        }
         _clearError();
         return true;
       }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/team_provider.dart';
+import 'create_team_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,50 +12,33 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Mock data for now - will replace with real data later
-  String selectedTeamId = 'team-1';
-  String selectedTeamName = 'Hack Attack';
-  
-  final List<Map<String, dynamic>> userTeams = [
-    {'id': 'team-1', 'name': 'Hack Attack', 'emoji': '⚾'},
-    {'id': 'team-2', 'name': 'Weekend Warriors', 'emoji': '🥎'},
-    {'id': 'team-3', 'name': 'Eagles', 'emoji': '🦅'},
-  ];
+  String selectedStatType = 'Player';
+  String selectedStatPeriod = 'Season';
 
-  final Map<String, dynamic> nextGame = {
-    'opponent': 'Thunder Bolts',
-    'date': '2024-03-15',
-    'time': '7:00 PM',
-    'location': 'Central Park Field 3',
-    'isLive': false,
-  };
+  @override
+  void initState() {
+    super.initState();
+    // Load user teams when the screen initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserData();
+    });
+  }
 
-  final Map<String, dynamic> teamStats = {
-    'record': '12-8',
-    'runsScored': 156,
-    'runsAllowed': 142,
-    'recentGames': ['W', 'L', 'W'],
-  };
+  Future<void> _loadUserData() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final teamProvider = Provider.of<TeamProvider>(context, listen: false);
+    
+    final accessToken = authProvider.accessToken;
+    final userId = authProvider.userId;
+    
+    if (accessToken != null && userId != null) {
+      await teamProvider.loadUserTeams(userId, accessToken);
+    }
+  }
 
-  String userRole = 'OWNER'; // Mock role - will get from backend
-  String selectedStatType = 'Player'; // Mock stat type selection
-  String selectedStatPeriod = 'Season'; // Mock stat period selection
-
-  // Mock player stats data
-  final Map<String, dynamic> playerStats = {
-    'battingAvg': '.425',
-    'rbi': 24,
-    'runs': 18,
-    'hits': 34,
-    'atBats': 80,
-    'doubles': 8,
-    'triples': 2,
-    'homeRuns': 3,
-    'stolenBases': 5,
-  };
-
-  final List<String> statTypes = ['Team', 'Player'];
-  final List<String> statPeriods = ['Season', 'Last Game', 'All-time'];
+  Future<void> _refreshData() async {
+    await _loadUserData();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,90 +57,89 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.logout),
             onPressed: () async {
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
+              final teamProvider = Provider.of<TeamProvider>(context, listen: false);
+              teamProvider.clear(); // Clear team data on logout
               await authProvider.signOut();
-              // AuthWrapper will automatically show login screen
             },
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Team Selector - Fixed at top
-            _buildTeamSelector(),
-            const SizedBox(height: 16),
-            
-            // Next Game Card
-            Expanded(
-              flex: 2,
-              child: _buildGameCard(),
-            ),
-            const SizedBox(height: 16),
-            
-            // Combined Stats - Fixed height
-            Expanded(
-              flex: 2,
-              child: _buildStatsSummary(),
-            ),
-          ],
+      body: RefreshIndicator(
+        onRefresh: _refreshData,
+        child: Consumer2<TeamProvider, AuthProvider>(
+          builder: (context, teamProvider, authProvider, child) {
+            if (teamProvider.isLoading) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF00FF88)),
+                ),
+              );
+            }
+
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Team Selector or No Teams State
+                  if (teamProvider.hasTeams) ...[
+                    _buildTeamSelector(teamProvider),
+                    const SizedBox(height: 16),
+                    _buildNextGameCard(teamProvider),
+                    const SizedBox(height: 16),
+                    _buildStatsCard(teamProvider),
+                  ] else ...[
+                    _buildNoTeamsState(),
+                    const SizedBox(height: 16),
+                    _buildEmptyStatsCard(),
+                  ],
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildTeamSelector() {
+  Widget _buildTeamSelector(TeamProvider teamProvider) {
     return Center(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFF00FF88), width: 1.5),
-          borderRadius: BorderRadius.circular(8),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF00FF88).withOpacity(0.3),
-              blurRadius: 8,
-              spreadRadius: 0,
-            ),
-          ],
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF333333)),
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
-            value: selectedTeamId,
-            isExpanded: true,
-            dropdownColor: const Color(0xFF0F0F0F),
-            style: const TextStyle(
-              color: Color(0xFF00FF88),
-              fontSize: 16,
+            value: teamProvider.selectedTeam?['id'],
+            hint: const Text(
+              'Select Team',
+              style: TextStyle(color: Color(0xFF888888)),
             ),
-            items: userTeams.map((team) {
+            dropdownColor: const Color(0xFF1E1E1E),
+            style: const TextStyle(color: Colors.white),
+            items: teamProvider.userTeams.map<DropdownMenuItem<String>>((team) {
               return DropdownMenuItem<String>(
                 value: team['id'],
                 child: Row(
                   children: [
-                    Text(
-                      team['emoji'],
-                      style: const TextStyle(fontSize: 20),
-                    ),
+                    Text(team['emoji'] ?? '⚾'),
                     const SizedBox(width: 8),
-                    Text(
-                      team['name'],
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF00FF88),
-                      ),
-                    ),
+                    Text(team['name'] ?? 'Unknown Team'),
                   ],
                 ),
               );
             }).toList(),
-            onChanged: (String? newValue) {
-              if (newValue != null) {
-                setState(() {
-                  selectedTeamId = newValue;
-                  selectedTeamName = userTeams.firstWhere((team) => team['id'] == newValue)['name'];
-                });
+            onChanged: (String? teamId) async {
+              if (teamId != null) {
+                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                final accessToken = authProvider.accessToken;
+                if (accessToken != null) {
+                  await teamProvider.selectTeam(teamId, accessToken);
+                }
               }
             },
           ),
@@ -164,418 +148,408 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildGameCard() {
-    return Card(
-      elevation: 0,
-      color: const Color(0xFF0F0F0F),
-      shape: RoundedRectangleBorder(
+  Widget _buildNoTeamsState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFF333333), width: 1),
+        border: Border.all(color: const Color(0xFF333333)),
       ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.sports_baseball,
+            size: 64,
+            color: Color(0xFF888888),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Welcome to HackTracker!',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontFamily: 'Tektur',
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Get started by creating a new team or joining an existing one.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: Color(0xFF888888),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const CreateTeamScreen(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF00FF88),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Create Your First Team',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A2A),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFF444444)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Color(0xFF888888), size: 16),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Team invites coming soon! For now, create a team and add players manually.',
+                    style: TextStyle(
+                      color: Color(0xFF888888),
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNextGameCard(TeamProvider teamProvider) {
+    final nextGame = teamProvider.nextGame;
+    
+    return Card(
+      color: const Color(0xFF1E1E1E),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+            const Text(
+              'Next Game',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF00FF88),
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (nextGame != null) ...[
+              Text(
+                'vs ${nextGame['opponent'] ?? 'TBD'}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${_formatGameDate(nextGame['start_datetime_utc'])}',
+                style: const TextStyle(color: Color(0xFF888888)),
+              ),
+              Text(
+                '${nextGame['park'] ?? 'TBD'} - ${nextGame['field'] ?? 'TBD'}',
+                style: const TextStyle(color: Color(0xFF888888)),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      // TODO: Navigate to lineup screen
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF333333),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('📋 Lineup'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      // TODO: Navigate to game stats screen
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF333333),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('📊 Stats'),
+                  ),
+                ],
+              ),
+            ] else ...[
+              const Text(
+                'No upcoming games scheduled',
+                style: TextStyle(
+                  color: Color(0xFF888888),
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () {
+                  // TODO: Navigate to schedule game screen
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF00FF88),
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('Schedule Game'),
+              ),
+            ],
+          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsCard(TeamProvider teamProvider) {
+    return Card(
+      color: const Color(0xFF1E1E1E),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  nextGame['isLive'] ? 'Live Game' : 'Next Game',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: nextGame['isLive'] ? const Color(0xFFFF0088) : const Color(0xFF00FF88),
-                  ),
-                ),
-                if (nextGame['isLive'])
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFF0088),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF0088).withOpacity(0.5),
-                          blurRadius: 8,
-                          spreadRadius: 0,
-                        ),
-                      ],
-                    ),
-                    child: const Text(
-                      'LIVE',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '${selectedTeamName} vs ${nextGame['opponent']}',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFE0E0E0),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 16, color: Color(0xFF00FF88)),
-                const SizedBox(width: 8),
-                Text(
-                  '${nextGame['date']} at ${nextGame['time']}',
-                  style: const TextStyle(color: Color(0xFFB0B0B0)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 16, color: Color(0xFF0088FF)),
-                const SizedBox(width: 8),
-                Text(
-                  nextGame['location'],
-                  style: const TextStyle(color: Color(0xFFB0B0B0)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                if (userRole == 'OWNER' || userRole == 'COACH') ...[
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        _showComingSoon('Lineup Editor');
-                      },
-                      icon: const Icon(Icons.list_alt, color: Colors.black),
-                      label: const Text('Lineup', style: TextStyle(color: Colors.black)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF00FF88),
-                        foregroundColor: Colors.black,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _showComingSoon('Stats Entry');
-                    },
-                    icon: const Icon(Icons.bar_chart, color: Colors.black),
-                    label: const Text('Stats', style: TextStyle(color: Colors.black)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0088FF),
-                      foregroundColor: Colors.black,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatsSummary() {
-    return Card(
-      elevation: 0,
-      color: const Color(0xFF0F0F0F),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFF333333), width: 1),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
+                const Text(
                   'Stats',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: selectedStatType == 'Team' ? const Color(0xFF00FF88) : const Color(0xFF0088FF),
+                    color: Color(0xFF00FF88),
                   ),
                 ),
-                const Spacer(),
-                // Type selector (Team/Player)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: selectedStatType == 'Team' ? const Color(0xFF00FF88) : const Color(0xFF0088FF), 
-                      width: 1
+                Row(
+                  children: [
+                    _buildStatsDropdown(
+                      value: selectedStatType,
+                      items: ['Player', 'Team'],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedStatType = value!;
+                        });
+                      },
                     ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: PopupMenuButton<String>(
-                    initialValue: selectedStatType,
-                    offset: const Offset(0, 30), // Force dropdown to open downward
-                    color: const Color(0xFF0F0F0F),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          selectedStatType,
-                          style: TextStyle(
-                            color: selectedStatType == 'Team' ? const Color(0xFF00FF88) : const Color(0xFF0088FF),
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_drop_down,
-                          color: selectedStatType == 'Team' ? const Color(0xFF00FF88) : const Color(0xFF0088FF),
-                          size: 16,
-                        ),
-                      ],
+                    const SizedBox(width: 8),
+                    _buildStatsDropdown(
+                      value: selectedStatPeriod,
+                      items: ['Season', 'All-time', 'Last Game'],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedStatPeriod = value!;
+                        });
+                      },
                     ),
-                    itemBuilder: (BuildContext context) {
-                      return statTypes.map((type) {
-                        return PopupMenuItem<String>(
-                          value: type,
-                          child: Text(
-                            type,
-                            style: TextStyle(
-                              color: selectedStatType == 'Team' ? const Color(0xFF00FF88) : const Color(0xFF0088FF),
-                              fontSize: 12,
-                            ),
-                          ),
-                        );
-                      }).toList();
-                    },
-                    onSelected: (String newValue) {
-                      setState(() {
-                        selectedStatType = newValue;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                // Period selector (Season/Last Game/All-time)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: selectedStatType == 'Team' ? const Color(0xFF00FF88) : const Color(0xFF0088FF), 
-                      width: 1
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: PopupMenuButton<String>(
-                    initialValue: selectedStatPeriod,
-                    offset: const Offset(0, 30), // Force dropdown to open downward
-                    color: const Color(0xFF0F0F0F),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          selectedStatPeriod,
-                          style: TextStyle(
-                            color: selectedStatType == 'Team' ? const Color(0xFF00FF88) : const Color(0xFF0088FF),
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_drop_down,
-                          color: selectedStatType == 'Team' ? const Color(0xFF00FF88) : const Color(0xFF0088FF),
-                          size: 16,
-                        ),
-                      ],
-                    ),
-                    itemBuilder: (BuildContext context) {
-                      return statPeriods.map((period) {
-                        return PopupMenuItem<String>(
-                          value: period,
-                          child: Text(
-                            period,
-                            style: TextStyle(
-                              color: selectedStatType == 'Team' ? const Color(0xFF00FF88) : const Color(0xFF0088FF),
-                              fontSize: 12,
-                            ),
-                          ),
-                        );
-                      }).toList();
-                    },
-                    onSelected: (String newValue) {
-                      setState(() {
-                        selectedStatPeriod = newValue;
-                      });
-                    },
-                  ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: selectedStatType == 'Team' ? _buildTeamStatsContent() : _buildPlayerStatsContent(),
-            ),
+            const SizedBox(height: 16),
+            if (selectedStatType == 'Player') 
+              _buildPlayerStats(teamProvider)
+            else 
+              _buildTeamStats(teamProvider),
           ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTeamStatsContent() {
-    return Column(
-      children: [
-        // First row - main team stats
-        Expanded(
-          child: Row(
+  Widget _buildEmptyStatsCard() {
+    return Card(
+      color: const Color(0xFF1E1E1E),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _buildStatItem('Record', teamStats['record'], const Color(0xFF00FF88)),
+            const Text(
+              'Stats',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF00FF88),
               ),
-              Expanded(
-                child: _buildStatItem('Runs For', teamStats['runsScored'].toString(), const Color(0xFF00FF88)),
+            ),
+            const SizedBox(height: 16),
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.bar_chart,
+                    size: 48,
+                    color: const Color(0xFF888888).withOpacity(0.5),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No stats available',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF888888),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Join a team to start tracking your performance',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFF666666),
+                    ),
+                  ),
+                ],
               ),
-              Expanded(
-                child: _buildStatItem('Runs Against', teamStats['runsAllowed'].toString(), const Color(0xFF00FF88)),
-              ),
-              Expanded(
-                child: _buildStatItem('Diff', '${teamStats['runsScored'] - teamStats['runsAllowed']}', const Color(0xFF00FF88)),
-              ),
-            ],
+            ),
+          ],
           ),
         ),
-        const SizedBox(height: 8),
-        // Second row - recent games
-        Expanded(
-          child: Row(
-            children: [
-              const Expanded(
-                flex: 1,
-                child: Text('Recent: ', style: TextStyle(color: Color(0xFFB0B0B0), fontSize: 14)),
-              ),
-              Expanded(
-                flex: 3,
-                child: Row(
-                  children: teamStats['recentGames'].map<Widget>((result) {
-                    final isWin = result == 'W';
-                    return Expanded(
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isWin ? const Color(0xFF00FF88) : const Color(0xFFFF0088),
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (isWin ? const Color(0xFF00FF88) : const Color(0xFFFF0088)).withOpacity(0.3),
-                              blurRadius: 4,
-                              spreadRadius: 0,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          result,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
+      ),
+    );
+  }
+
+  Widget _buildPlayerStats(TeamProvider teamProvider) {
+    // Mock player stats - replace with real data from backend
+    return Column(
+      children: [
+        Row(
+          children: [
+            _buildStatItem('AVG', '.000', Colors.blue),
+            _buildStatItem('H', '0', Colors.green),
+            _buildStatItem('R', '0', Colors.orange),
+            _buildStatItem('RBI', '0', Colors.purple),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildPlayerStatsContent() {
+  Widget _buildTeamStats(TeamProvider teamProvider) {
     return Column(
       children: [
-        // First row - main stats
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildStatItem('Avg', playerStats['battingAvg'], const Color(0xFF0088FF)),
-              ),
-              Expanded(
-                child: _buildStatItem('RBI', playerStats['rbi'].toString(), const Color(0xFF0088FF)),
-              ),
-              Expanded(
-                child: _buildStatItem('Runs', playerStats['runs'].toString(), const Color(0xFF0088FF)),
-              ),
-              Expanded(
-                child: _buildStatItem('Hits', playerStats['hits'].toString(), const Color(0xFF0088FF)),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Second row - additional stats
-        Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildStatItem('2B', playerStats['doubles'].toString(), const Color(0xFF0088FF)),
-              ),
-              Expanded(
-                child: _buildStatItem('3B', playerStats['triples'].toString(), const Color(0xFF0088FF)),
-              ),
-              Expanded(
-                child: _buildStatItem('HR', playerStats['homeRuns'].toString(), const Color(0xFF0088FF)),
-              ),
-              Expanded(
-                child: _buildStatItem('SB', playerStats['stolenBases'].toString(), const Color(0xFF0088FF)),
-              ),
-            ],
-          ),
+        Row(
+          children: [
+            _buildStatItem('Record', teamProvider.teamRecord, Colors.green),
+            _buildStatItem('RS', '0', Colors.blue),
+            _buildStatItem('RA', '0', Colors.red),
+          ],
         ),
       ],
     );
   }
 
   Widget _buildStatItem(String label, String value, Color color) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
-        ),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xFF666666),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF888888),
+            ),
           ),
-          textAlign: TextAlign.center,
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature coming soon!'),
-        duration: const Duration(seconds: 2),
+  Widget _buildStatsDropdown({
+    required String value,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF333333),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          dropdownColor: const Color(0xFF333333),
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+          items: items.map<DropdownMenuItem<String>>((String item) {
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Text(item),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
       ),
     );
+  }
+
+  String _formatGameDate(String? dateTimeUtc) {
+    if (dateTimeUtc == null) return 'TBD';
+    
+    try {
+      final dateTime = DateTime.parse(dateTimeUtc);
+      final local = dateTime.toLocal();
+      return '${local.month}/${local.day} at ${_formatTime(local)}';
+    } catch (e) {
+      return 'TBD';
+    }
+  }
+
+  String _formatTime(DateTime dateTime) {
+    final hour = dateTime.hour;
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
+    final displayHour = hour == 0 ? 12 : (hour > 12 ? hour - 12 : hour);
+    return '$displayHour:$minute $period';
   }
 }
